@@ -4,3 +4,5 @@ langgraph
 langchain-core
 langchain-huggingface
 python-dotenv
+ddgs
+beautifulsoup4
