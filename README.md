@@ -52,8 +52,15 @@ Space configuration reference: https://huggingface.co/docs/hub/spaces-config-ref
   - `read_attached_file`: reads the file attached to a question. Text, code and CSV files are returned as text, Excel sheets as CSV, images are described by a vision model (`Qwen2.5-VL-72B-Instruct`, given the question so it knows what to look for), and audio is transcribed with `whisper-large-v3`.
   - `reverse_text`: reads backwards text.
 - **System prompt** (`SYSTEM_PROMPT` in `agent.py`): tells the model to use the tools, to reverse backwards questions, and to reply with the bare answer only, because answers are compared to a reference answer.
-- **Attached files:** the scoring API's `/files/{task_id}` currently returns 404, so `attachments.py` falls back to the [GAIA dataset](https://huggingface.co/datasets/gaia-benchmark/GAIA), where the same files live. It is gated: accept its terms on the account that owns your token, or attachments cannot be read. Python files are read, not executed, so the agent has to work out their output itself.
-- **Known limits:** no tool can watch videos, and files other than text, Excel, images and audio are not supported. Answers are not fully deterministic, so the same question can get different answers on different runs.
+- **Attached files:** several course questions come with a file, which the agent needs at run time, on the Space as well as locally. The scoring API's `/files/{task_id}` currently returns 404, so `attachments.py` falls back to the [GAIA dataset](https://huggingface.co/datasets/gaia-benchmark/GAIA), where the same files live. GAIA is gated: accept its terms on the account that owns your token, and use that token both in `.env` and as the `HF_TOKEN` secret of the Space. Otherwise file questions fail. When the API's file endpoint works again, the GAIA fallback can be removed.
+- **Known limits:**
+  - No tool can watch videos (e.g. the YouTube bird-species question).
+  - Attachments other than text, code, CSV, Excel, images and audio (for example PDF, Word, PowerPoint) are reported as unsupported.
+  - Python attachments are read, not run, so the output of longer scripts can be wrong.
+  - Image answers depend on the vision model (e.g. reading a chess position); audio transcription has not been checked on the real course recordings.
+  - Attachments need GAIA access (see above); without it those questions fail.
+  - `fetch_webpage` keeps only the first 15,000 characters of a page, so information further down can be missed. `web_search` (DuckDuckGo) can be rate limited.
+  - Answers are not fully deterministic. The same question can get different answers on different runs, and the model sometimes replies with a sentence instead of the bare answer or skips a tool call, which costs points because answers are compared exactly.
 
 ## Local setup
 
@@ -96,6 +103,7 @@ Tests call the agent directly, with no Gradio and no submission. They come in tw
 ```bash
 pytest                    # fast: scripted fake model, no network, no token (under a second)
 pytest -m integration     # slow: real model and live web, needs a real HF_TOKEN in .env
+pytest -m integration -k random   # the agent on 3 random course questions (nothing submitted)
 ```
 
 - **Fast tests** check our own code: that the model's answer is returned, that the system prompt is sent first, that a tool call runs and its result goes back to the model, and that the tools format their output and handle errors.
