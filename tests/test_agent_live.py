@@ -56,6 +56,8 @@ def test_random_course_question(agent, draw):
     response.raise_for_status()
     item = response.json()
     if item.get("file_name"):
-        print(f"\n(question comes with an attached file the agent cannot read: {item['file_name']})")
+        print(f"\n(question comes with an attached file: {item['file_name']})")
     print(f"task_id: {item['task_id']}")
-    assert ask(agent, item["question"]).strip()
+    answer = agent(item["question"], task_id=item["task_id"], file_name=item.get("file_name"))
+    print(f"Q: {item['question']}\nA: {answer}")
+    assert answer.strip()

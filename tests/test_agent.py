@@ -51,6 +51,14 @@ def test_system_prompt_is_sent_first():
     assert isinstance(second, HumanMessage) and second.content == "Q?"
 
 
+def test_attached_file_is_announced_to_the_model():
+    chat = ScriptedChat(AIMessage(content="ok"))
+    BasicAgent(chat=chat)("Q?", task_id="abc", file_name="abc.png")
+
+    question = chat.calls[0][-1].content
+    assert "abc.png" in question and "task_id: abc" in question
+
+
 def test_tool_call_is_executed_and_result_goes_back_to_the_model(fake_search):
     chat = ScriptedChat(tool_call("meaning of life"), AIMessage(content="42"))
 

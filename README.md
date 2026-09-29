@@ -24,9 +24,15 @@ Space configuration reference: https://huggingface.co/docs/hub/spaces-config-ref
 | --- | --- |
 | `app.py` | Gradio UI: login, fetch questions, run the agent, submit answers |
 | `agent.py` | The agent (`BasicAgent`): a LangGraph loop of model and tools, plus the system prompt |
-| `tools.py` | Tools the agent can call: `web_search`, `fetch_webpage`, `reverse_text` |
+| `tools.py` | Tools the agent can call: `web_search`, `fetch_webpage`, `read_attached_file`, `reverse_text` |
+| `attachments.py` | Downloads the files attached to questions (scoring API, then GAIA dataset) |
+| `readers.py` | Turns a local file into text, by file type (text, Excel, images, audio) |
+| `models.py` | Hugging Face vision and speech-to-text calls, used by `readers.py` |
+| `config.py` | Loads `.env` and provides the Hugging Face token |
 | `tests/test_agent.py` | Fast tests of the agent with a scripted fake model |
 | `tests/test_tools.py` | Fast tests of the tools, plus one live search |
+| `tests/test_attachments.py` | Fast tests of attachment downloading |
+| `tests/test_readers.py` | Fast tests of file reading |
 | `tests/test_agent_live.py` | Slow tests with the real model and live web |
 | `pytest.ini` | pytest settings (test path, `integration` marker, output not captured) |
 | `requirements.txt` | Runtime dependencies (installed by the Space) |
@@ -43,9 +49,11 @@ Space configuration reference: https://huggingface.co/docs/hub/spaces-config-ref
 - **Tools** (`tools.py`):
   - `web_search`: DuckDuckGo, top 5 results.
   - `fetch_webpage`: downloads a page and returns its text (first 15,000 characters), for when snippets are not enough.
+  - `read_attached_file`: reads the file attached to a question. Text, code and CSV files are returned as text, Excel sheets as CSV, images are described by a vision model (`Qwen2.5-VL-72B-Instruct`, given the question so it knows what to look for), and audio is transcribed with `whisper-large-v3`.
   - `reverse_text`: reads backwards text.
 - **System prompt** (`SYSTEM_PROMPT` in `agent.py`): tells the model to use the tools, to reverse backwards questions, and to reply with the bare answer only, because answers are compared to a reference answer.
-- **Known limits:** no tool can watch videos, listen to audio or read attached files. Answers are not fully deterministic, so the same question can get different answers on different runs.
+- **Attached files:** the scoring API's `/files/{task_id}` currently returns 404, so `attachments.py` falls back to the [GAIA dataset](https://huggingface.co/datasets/gaia-benchmark/GAIA), where the same files live. It is gated: accept its terms on the account that owns your token, or attachments cannot be read. Python files are read, not executed, so the agent has to work out their output itself.
+- **Known limits:** no tool can watch videos, and files other than text, Excel, images and audio are not supported. Answers are not fully deterministic, so the same question can get different answers on different runs.
 
 ## Local setup
 

@@ -6,3 +6,4 @@ langchain-huggingface
 python-dotenv
 ddgs
 beautifulsoup4
+openpyxl

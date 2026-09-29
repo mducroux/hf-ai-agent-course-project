@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 from ddgs import DDGS
 from langchain_core.tools import tool
 
+from attachments import download_attachment
+from readers import read_file
+
 
 @tool
 def web_search(query: str) -> str:
@@ -51,3 +54,19 @@ def fetch_webpage(url: str) -> str:
     if len(text) > MAX_PAGE_CHARS:
         text = text[:MAX_PAGE_CHARS] + f"\n[truncated: page has {len(text)} characters]"
     return text
+
+
+@tool
+def read_attached_file(
+    task_id: str, file_name: str, instruction: str = "Describe the content in detail."
+) -> str:
+    """Read the file attached to a question (given as task_id and file_name in the question).
+
+    Returns the text for code, text and spreadsheet files, a transcript for audio, and an
+    answer from a vision model for images. For images, put the full question in `instruction`
+    so the vision model knows what to look for.
+    """
+    try:
+        return read_file(download_attachment(task_id, file_name), instruction)
+    except Exception as e:
+        return f"Could not read {file_name}: {e}"

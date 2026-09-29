@@ -1,20 +1,17 @@
-import os
 from typing import Annotated, TypedDict
 
-from dotenv import load_dotenv
 from langchain_core.messages import AnyMessage, HumanMessage, SystemMessage
 from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from tools import fetch_webpage, reverse_text, web_search
-
-load_dotenv()
+from config import get_hf_token
+from tools import fetch_webpage, read_attached_file, reverse_text, web_search
 
 MODEL_ID = "meta-llama/Llama-3.3-70B-Instruct"
 
-tools = [web_search, fetch_webpage, reverse_text]
+tools = [web_search, fetch_webpage, read_attached_file, reverse_text]
 
 SYSTEM_PROMPT = """You are a research assistant answering questions that have one short, factual answer.
 
@@ -22,6 +19,8 @@ SYSTEM_PROMPT = """You are a research assistant answering questions that have on
   different query if the first results do not answer the question.
 - Search snippets are partial. When you need details, counts or lists, open the best page with
   fetch_webpage (e.g. the Wikipedia article) and read it carefully before answering.
+- If the question mentions an attached file, call read_attached_file with the task_id and file_name
+  given in the message. For an image, pass the full question as `instruction`.
 - If the question looks like backwards text (e.g. it starts with ".rewsna"), first call
   reverse_text with the ENTIRE question. The reversed result is the real question: answer that
   question, do not repeat or comment on the reversed text.
@@ -37,21 +36,12 @@ class AgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
 
 
-def _get_token() -> str:
-    token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
-    if not token:
-        raise RuntimeError(
-            "No Hugging Face token found. Set HF_TOKEN (or HUGGINGFACEHUB_API_TOKEN)."
-        )
-    return token
-
-
 class BasicAgent:
     def __init__(self, chat=None):
         """`chat` lets tests inject a fake model; by default the real one is used."""
         if chat is None:
             llm = HuggingFaceEndpoint(
-                repo_id=MODEL_ID, huggingfacehub_api_token=_get_token(), timeout=30
+                repo_id=MODEL_ID, huggingfacehub_api_token=get_hf_token(), timeout=30
             )
             # Binding an empty tool list can be rejected by the API, so only bind real tools.
             chat = ChatHuggingFace(llm=llm)
@@ -74,9 +64,13 @@ class BasicAgent:
         messages = [SystemMessage(content=SYSTEM_PROMPT), *state["messages"]]
         return {"messages": [self.chat.invoke(messages)]}
 
-    def __call__(self, question: str) -> str:
-        print(f"Agent received question (first 50 chars): {question[:50]}...")
-        result = self.graph.invoke({"messages": [HumanMessage(content=question)]})
+    def __call__(self, question: str, task_id: str | None = None, file_name: str | None = None) -> str:
+        content = question
+        if file_name:
+            content += (
+                f"\n\n[Attached file: {file_name} (task_id: {task_id}). "
+                "Use read_attached_file to read it.]"
+            )
+        result = self.graph.invoke({"messages": [HumanMessage(content=content)]})
         answer = result["messages"][-1].content
-        print(f"Agent returning answer: {answer}")
         return answer
