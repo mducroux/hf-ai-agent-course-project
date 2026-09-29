@@ -1,2 +1,6 @@
 gradio[oauth]
 requests
+langgraph
+langchain-core
+langchain-huggingface
+python-dotenv
