@@ -5,8 +5,11 @@ Run with `pytest -m integration`. They are skipped without a real HF token in `.
 import os
 
 import pytest
+import requests
 
 from agent import BasicAgent
+
+RANDOM_QUESTION_URL = "https://agents-course-unit4-scoring.hf.space/random-question"
 
 pytestmark = [
     pytest.mark.integration,
@@ -44,3 +47,15 @@ def test_question_that_needs_web_search(agent):
         "(included)? You can use the latest 2022 version of english wikipedia.",
     )
     assert "3" in answer
+
+
+@pytest.mark.parametrize("draw", range(3))
+def test_random_course_question(agent, draw):
+    """No known answer here: run it and read the printed Q/A yourself. Nothing is submitted."""
+    response = requests.get(RANDOM_QUESTION_URL, timeout=15)
+    response.raise_for_status()
+    item = response.json()
+    if item.get("file_name"):
+        print(f"\n(question comes with an attached file the agent cannot read: {item['file_name']})")
+    print(f"task_id: {item['task_id']}")
+    assert ask(agent, item["question"]).strip()
