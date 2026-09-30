@@ -1,15 +1,12 @@
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import AnyMessage, HumanMessage, SystemMessage
-from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from config import get_hf_token
+from models import build_chat
 from tools import fetch_webpage, read_attached_file, reverse_text, web_search
-
-MODEL_ID = "meta-llama/Llama-3.3-70B-Instruct"
 
 tools = [web_search, fetch_webpage, read_attached_file, reverse_text]
 
@@ -40,14 +37,7 @@ class BasicAgent:
     def __init__(self, chat=None):
         """`chat` lets tests inject a fake model; by default the real one is used."""
         if chat is None:
-            llm = HuggingFaceEndpoint(
-                repo_id=MODEL_ID, huggingfacehub_api_token=get_hf_token(), timeout=30
-            )
-            # Binding an empty tool list can be rejected by the API, so only bind real tools.
-            chat = ChatHuggingFace(llm=llm)
-            chat = chat.bind_tools(tools) if tools else chat
-            # Network errors and timeouts happen; retry instead of failing the question.
-            chat = chat.with_retry(stop_after_attempt=3)
+            chat = build_chat(tools)
         self.chat = chat
 
         builder = StateGraph(AgentState)
