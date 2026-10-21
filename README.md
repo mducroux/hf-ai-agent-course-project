@@ -1,26 +1,8 @@
----
-title: Final Assignment AI Agent Course
-emoji: 🕵🏻‍♂️
-colorFrom: indigo
-colorTo: indigo
-sdk: gradio
-sdk_version: 5.25.2
-app_file: app.py
-pinned: false
-hf_oauth: true
-# optional, default duration is 8 hours/480 minutes. Max duration is 30 days/43200 minutes.
-hf_oauth_expiration_minutes: 480
----
+# Hugging Face AI Agents Course Final Project
 
-# Final Assignment: AI Agents Course
+An AI agent built for the final project of Hugging Face's [AI Agents course](https://huggingface.co/learn/agents-course/unit0/introduction). It answers questions from the [GAIA Level 1 benchmark](https://huggingface.co/gaia-benchmark) — searching the web, reading attached files, and reasoning over the results — and scores 30% on that set.
 
-Gradio app that fetches the course questions, runs an agent on them, submits the answers to the scoring API and shows the score.
-
-Space configuration reference: https://huggingface.co/docs/hub/spaces-config-reference
-
-## The agent
-
-`BasicAgent` is a LangGraph graph with two nodes. The `assistant` node calls the model with the system prompt and the conversation. If the model asks for a tool, the `tools` node runs it and the result goes back to the assistant. The loop ends when the model replies without a tool call, and that reply is the submitted answer.
+At its core, `BasicAgent` is a LangGraph graph with two nodes. The `assistant` node calls the model with the system prompt and the conversation so far. When the model requests a tool, the `tools` node runs it and feeds the result back to the assistant. The loop ends once the model replies without requesting a tool, and that final reply is the answer submitted for scoring.
 
 - **Model:** `meta-llama/Llama-3.3-70B-Instruct` through Hugging Face inference (`CHAT_MODEL` in `models.py`).
 - **Tools** (`tools.py`):
